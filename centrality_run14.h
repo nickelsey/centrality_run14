@@ -16,7 +16,7 @@ public:
 
   // sets the parameters necessary for refmultcorr calculations, must
   // be called before refMultCorr(), weight(), etc
-  // units: zdcX = [kHz] vz = [cm]
+  // units: zdcX = [Hz] vz = [cm]
   void setEvent(int runid, double refmult, double zdc, double vz);
 
   // given a luminosity, a vz position, and a refmult, calculate
