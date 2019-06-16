@@ -8,7 +8,7 @@ CentralityRun14::CentralityRun14()
     : refmultcorr_(-1.0), centrality_16_(-1), centrality_9_(-1), weight_(0.0),
       min_vz_(-30.0), max_vz_(30.0), min_zdc_(0.0), max_zdc_(60000.0),
       min_run_(15076101), max_run_(15167014), weight_bound_(400), vz_norm_(0),
-      zdc_norm_(30) {
+      zdc_norm_(30000) {
 
   zdc_par_ = std::vector<double>{175.758, -0.307738};
   vz_par_ =
