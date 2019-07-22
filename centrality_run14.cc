@@ -10,14 +10,14 @@ CentralityRun14::CentralityRun14()
       min_run_(15076101), max_run_(15167014), weight_bound_(400), vz_norm_(0),
       zdc_norm_(30000) {
 
-  zdc_par_ = std::vector<double>{175.758, -0.307738};
+  zdc_par_ = std::vector<double>{188.392, -0.32269};
   vz_par_ =
-      std::vector<double>{529.051,      0.192153,    0.00485177,  -0.00017741,
-                          -1.44156e-05, 3.97255e-07, -6.80378e-10};
-  weight_par_ = std::vector<double>{1.22692,     -2.04056, 1.53857,    1.55649,
-                                    -0.00123008, 193.648,  1.30923e-06};
+      std::vector<double>{529.123,      0.19706,     0.00433184,  -0.000183687,
+                          -1.29087e-05, 3.82464e-07, -1.70998e-09};
+  weight_par_ = std::vector<double>{1.34842,     -12.8629, 0.767038,   4.2547,
+                                    -0.00264771, 357.779,  5.10897e-06};
   std::vector<unsigned> cent_bin_16_tmp_ = std::vector<unsigned>{
-      7, 10, 15, 22, 31, 43, 58, 77, 100, 129, 163, 203, 249, 303, 366, 441};
+      10, 15, 22, 30, 42, 56, 74, 94, 120, 149, 184, 224, 269, 321, 381, 450};
   setCentralityBounds16Bin(cent_bin_16_tmp_);
 
   dis_ = std::uniform_real_distribution<double>(0.0, 1.0);
