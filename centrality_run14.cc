@@ -5,28 +5,31 @@
 #include <math.h>
 
 CentralityRun14::CentralityRun14()
-    : refmultcorr_(-1.0), centrality_16_(-1), centrality_9_(-1), weight_(0.0),
-      min_vz_(-30.0), max_vz_(30.0), min_zdc_(0.0), max_zdc_(60000.0),
-      min_run_(15076101), max_run_(15167014), weight_bound_(400), vz_norm_(0),
-      zdc_norm_(30000) {
-
-  zdc_par_ = std::vector<double>{188.392, -0.32269};
-  vz_par_ =
-      std::vector<double>{529.123,      0.19706,     0.00433184,  -0.000183687,
-                          -1.29087e-05, 3.82464e-07, -1.70998e-09};
-  weight_par_ = std::vector<double>{1.34842,     -12.8629, 0.767038,   4.2547,
-                                    -0.00264771, 357.779,  5.10897e-06};
-  std::vector<unsigned> cent_bin_16_tmp_ = std::vector<unsigned>{
-      10, 15, 22, 30, 42, 56, 74, 94, 120, 149, 184, 224, 269, 321, 381, 450};
-  setCentralityBounds16Bin(cent_bin_16_tmp_);
+    : refmultcorr_(-1.0), centrality_16_(-1), centrality_9_(-1), weight_(1.0),
+      min_vz_(0.0), max_vz_(0.0), min_zdc_(0.0), max_zdc_(0.0), min_run_(0),
+      max_run_(0), weight_bound_(0), vz_norm_(0), zdc_norm_(0),
+      smoothing_(true) {
 
   dis_ = std::uniform_real_distribution<double>(0.0, 1.0);
 }
 
 CentralityRun14::~CentralityRun14() {}
 
-void CentralityRun14::setEvent(int runid, double refmult, double zdc,
-                               double vz) {
+void CentralityRun14::loadCentralityDef(CentDefId id) {
+  CentralityDef &def = CentralityDef::instance();
+
+  setRunRange(def.runIdMin(id), def.runIdMax(id));
+  setVzRange(def.vzMin(id), def.vzMax(id));
+  setZDCRange(def.zdcMin(id), def.zdcMax(id));
+  setVzNormalizationPoint(def.vzNormPoint(id));
+  setZDCNormalizationPoint(def.zdcNormPoint(id));
+  setZDCParameters(def.zdcParameters(id));
+  setVzParameters(def.vzParameters(id));
+  setWeightParameters(def.weightParameters(id), def.weightBound(id));
+  setCentralityBounds16Bin(def.centralityBounds(id));
+}
+
+void CentralityRun14::setEvent(int runid, double refmult, double zdc, double vz) {
   if (checkEvent(runid, refmult, zdc, vz)) {
     calculateCentrality(refmult, zdc, vz);
   }
@@ -36,7 +39,7 @@ void CentralityRun14::setEvent(int runid, double refmult, double zdc,
     refmultcorr_ = refmult;
     centrality_9_ = -1;
     centrality_16_ = -1;
-    weight_ = 0;
+    weight_ = 1.0;
   }
 }
 
@@ -55,8 +58,8 @@ void CentralityRun14::setZDCParameters(const std::vector<double> &pars) {
   zdc_par_ = pars;
 }
 void CentralityRun14::setVzParameters(double par0, double par1, double par2,
-                                      double par3, double par4, double par5,
-                                      double par6) {
+                                 double par3, double par4, double par5,
+                                 double par6) {
   vz_par_ = std::vector<double>{par0, par1, par2, par3, par4, par5, par6};
 }
 
@@ -74,8 +77,7 @@ void CentralityRun14::setVzParameters(const std::vector<double> &pars) {
   vz_par_ = pars;
 }
 
-void CentralityRun14::setCentralityBounds16Bin(
-    const std::vector<unsigned> &bounds) {
+void CentralityRun14::setCentralityBounds16Bin(const std::vector<unsigned> &bounds) {
   cent_bin_16_.clear();
   cent_bin_9_.clear();
 
@@ -94,7 +96,7 @@ void CentralityRun14::setCentralityBounds16Bin(
 }
 
 void CentralityRun14::setWeightParameters(const std::vector<double> &pars,
-                                          double bound) {
+                                     double bound) {
   weight_par_.clear();
   weight_bound_ = 0;
   if (pars.size() != 7) {
@@ -106,8 +108,15 @@ void CentralityRun14::setWeightParameters(const std::vector<double> &pars,
   weight_bound_ = bound;
 }
 
-bool CentralityRun14::checkEvent(int runid, double refmult, double zdc,
-                                 double vz) {
+bool CentralityRun14::isValid() {
+  if (max_run_ <= 0 || weight_par_.size() != 7 || vz_par_.size() != 7 ||
+      zdc_par_.size() != 2 || cent_bin_16_.size() != 16 ||
+      (max_zdc_ <= min_zdc_) || (max_vz_ <= min_vz_))
+    return false;
+  return true;
+}
+
+bool CentralityRun14::checkEvent(int runid, double refmult, double zdc, double vz) {
   if (refmult < 0)
     return false;
   if (max_run_ > 0 && (runid < min_run_ || runid > max_run_))
@@ -119,21 +128,22 @@ bool CentralityRun14::checkEvent(int runid, double refmult, double zdc,
   return true;
 }
 
-void CentralityRun14::calculateCentrality(double refmult, double zdc,
-                                          double vz) {
+void CentralityRun14::calculateCentrality(double refmult, double zdc, double vz) {
 
   // we randomize raw refmult within 1 bin to avoid the peaky structures at low
   // refmult
-  double raw_ref = refmult + dis_(gen_);
+  double raw_ref = refmult;
+  if (smoothing_)
+    raw_ref += dis_(gen_);
 
   if (zdc_par_.empty() || vz_par_.empty()) {
     std::cerr << "zdc and vz correction parameters must be set before "
                  "refmultcorr can be calculated"
               << std::endl;
-    refmultcorr_ = 0.0;
+    refmultcorr_ = refmult;
     centrality_9_ = -1;
     centrality_16_ = -1;
-    weight_ = 0.0;
+    weight_ = 1.0;
   }
 
   double zdc_scaling = zdc_par_[0] + zdc_par_[1] * zdc / 1000.0;
@@ -156,7 +166,7 @@ void CentralityRun14::calculateCentrality(double refmult, double zdc,
   refmultcorr_ = raw_ref * vz_correction * zdc_correction;
 
   // now calculate the centrality bins, both 16 & 9
-  centrality_9_ = -1;
+  centrality_9_ = 9;
   for (int i = 0; i < cent_bin_9_.size(); ++i) {
     if (refmultcorr_ >= cent_bin_9_[cent_bin_9_.size() - i - 1]) {
       centrality_9_ = i;
@@ -164,7 +174,7 @@ void CentralityRun14::calculateCentrality(double refmult, double zdc,
     }
   }
 
-  centrality_16_ = -1;
+  centrality_16_ = 16;
   for (int i = 0; i < cent_bin_16_.size(); ++i) {
     if (refmultcorr_ >= cent_bin_16_[cent_bin_16_.size() - i - 1]) {
       centrality_16_ = i;
